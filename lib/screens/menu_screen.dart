@@ -5,6 +5,7 @@ import '../services/audio_service.dart';
 import '../services/iap_service.dart';
 import '../services/settings_service.dart';
 import '../theme/sumi_themes.dart';
+import '../widgets/name_edit_dialog.dart';
 import '../widgets/sumi_widgets.dart';
 import 'game_screen.dart';
 import 'pro_screen.dart';
@@ -109,43 +110,14 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   void _editName() {
-    final ctrl = TextEditingController(text: widget.settings.profileName);
     final t = widget.settings.themeDef();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: t.washi,
-        title: Text('Your name', style: SumiType.display(20, t)),
-        content: TextField(
-          controller: ctrl,
-          maxLength: 16,
-          autofocus: true,
-          style: SumiType.body(17, t),
-          decoration: InputDecoration(
-            hintText: 'e.g. Ink Master',
-            hintStyle: SumiType.body(15, t,
-                color: t.walnut.withValues(alpha: 0.5)),
-            enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: t.bamboo)),
-            focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: t.vermilion, width: 2)),
-          ),
-          onSubmitted: (_) => Navigator.of(context).pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: SumiType.label(13, t)),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.settings.setProfileName(ctrl.text);
-              widget.audio.click();
-              Navigator.of(context).pop();
-            },
-            child: Text('Save', style: SumiType.label(13, t)),
-          ),
-        ],
+      builder: (_) => NameEditDialog(
+        theme: t,
+        settings: widget.settings,
+        audio: widget.audio,
+        hintText: 'e.g. Ink Master',
       ),
     );
   }

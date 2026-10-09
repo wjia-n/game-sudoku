@@ -4,6 +4,7 @@ import '../services/audio_service.dart';
 import '../services/iap_service.dart';
 import '../services/settings_service.dart';
 import '../theme/sumi_themes.dart';
+import '../widgets/name_edit_dialog.dart';
 import '../widgets/sumi_widgets.dart';
 import 'custom_theme_screen.dart';
 import 'pro_screen.dart';
@@ -354,37 +355,12 @@ class _NameRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        final ctrl =
-            TextEditingController(text: settings.profileName);
         showDialog(
           context: context,
-          builder: (_) => AlertDialog(
-            backgroundColor: theme.washi,
-            title:
-                Text('Your name', style: SumiType.display(20, theme)),
-            content: TextField(
-              controller: ctrl,
-              maxLength: 16,
-              autofocus: true,
-              style: SumiType.body(17, theme),
-              onSubmitted: (_) => Navigator.of(context).pop(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('Cancel',
-                    style: SumiType.label(13, theme)),
-              ),
-              TextButton(
-                onPressed: () {
-                  settings.setProfileName(ctrl.text);
-                  audio.click();
-                  Navigator.of(context).pop();
-                },
-                child: Text('Save',
-                    style: SumiType.label(13, theme)),
-              ),
-            ],
+          builder: (_) => NameEditDialog(
+            theme: theme,
+            settings: settings,
+            audio: audio,
           ),
         );
       },
