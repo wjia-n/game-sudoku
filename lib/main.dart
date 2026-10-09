@@ -1,12 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'audio.dart';
-import 'screens/game_screen.dart';
-import 'screens/menu_screen.dart';
-import 'screens/settings_screen.dart';
-import 'settings.dart';
-import 'theme.dart';
+import 'screens/splash_screen.dart';
+import 'services/audio_service.dart';
+import 'services/iap_service.dart';
+import 'services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,78 +14,69 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  await SudoSettings.instance.init();
-  await SudoAudio.instance.init();
-  runApp(const SudokuApp());
+  final settings = SudoSettings();
+  await settings.load();
+  final audio = SumiAudio();
+  audio.configure(
+    musicOn: settings.musicOn,
+    sfxOn: settings.sfxOn,
+    volume: settings.masterVol,
+    musicVol: settings.musicVol,
+  );
+  final store = StoreService();
+  // Store init is best-effort: the game works fully offline without it.
+  unawaited(store.init());
+  runApp(SudokuApp(audio: audio, settings: settings, store: store));
 }
 
-enum _Screen { menu, game, settings }
-
 class SudokuApp extends StatefulWidget {
-  const SudokuApp({super.key});
+  final SumiAudio audio;
+  final SudoSettings settings;
+  final StoreService store;
+  const SudokuApp({
+    super.key,
+    required this.audio,
+    required this.settings,
+    required this.store,
+  });
 
   @override
   State<SudokuApp> createState() => _SudokuAppState();
 }
 
-class _SudokuAppState extends State<SudokuApp> {
-  _Screen _screen = _Screen.menu;
-  _Screen _settingsReturn = _Screen.menu;
-  GameScreen? _game; // retained while settings is pushed over a live game
-  Map<String, dynamic>? _save;
-  bool _saveChecked = false;
-
-  final audio = SudoAudio.instance;
-
+class _SudokuAppState extends State<SudokuApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    audio.playMusic('audio/music_menu.wav');
-    _checkSave();
+    WidgetsBinding.instance.addObserver(this);
+    // Wire store → settings: a real Pro purchase flips the local flag.
+    widget.store.proPurchased.addListener(_onStorePro);
   }
 
-  Future<void> _checkSave() async {
-    final save = await GameScreen.loadSave();
-    if (mounted) {
-      setState(() {
-        _save = save;
-        _saveChecked = true;
-      });
+  void _onStorePro() {
+    if (widget.store.proPurchased.value && !widget.settings.isPro) {
+      widget.settings.setPro(true);
     }
   }
 
-  void _goMenu() {
-    _game = null;
-    setState(() {
-      _screen = _Screen.menu;
-      _saveChecked = false;
-    });
-    audio.playMusic('audio/music_menu.wav');
-    _checkSave();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.store.proPurchased.removeListener(_onStorePro);
+    super.dispose();
   }
 
-  void _startGame({required int diff, Map<String, dynamic>? restored}) {
-    audio.start();
-    setState(() {
-      _game = GameScreen(
-        key: ValueKey('game-$diff-${DateTime.now().millisecondsSinceEpoch}'),
-        diffIndex: diff,
-        restored: restored,
-        onExitToMenu: _goMenu,
-        onOpenSettings: () {
-          _settingsReturn = _Screen.game;
-          setState(() => _screen = _Screen.settings);
-        },
-      );
-      _screen = _Screen.game;
-    });
-    audio.playMusic('audio/music_game.wav');
-  }
-
-  void _openSettings() {
-    _settingsReturn = _Screen.menu;
-    setState(() => _screen = _Screen.settings);
-    audio.click();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // App-scoped music: pause on background, resume on return. Never
+    // silently dies on screen navigation — screens never stop music.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      widget.audio.onAppPaused();
+    } else if (state == AppLifecycleState.resumed) {
+      widget.audio.onAppResumed();
+    }
   }
 
   @override
@@ -94,58 +85,19 @@ class _SudokuAppState extends State<SudokuApp> {
       title: 'Sudoku',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: SudoColors.tatami,
-        fontFamily: SudoFonts.sans,
+        scaffoldBackgroundColor: const Color(0xFFE5D5BC),
+        fontFamily: 'Manrope',
         colorScheme: const ColorScheme.light(
-          primary: SudoColors.bambooDark,
-          surface: SudoColors.washi,
+          primary: Color(0xFFA67C48),
+          surface: Color(0xFFFAF6EE),
         ),
         useMaterial3: true,
       ),
-      home: Scaffold(
-        body: TatamiBackground(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: _currentScreen(),
-          ),
-        ),
+      home: SplashScreen(
+        audio: widget.audio,
+        settings: widget.settings,
+        store: widget.store,
       ),
     );
-  }
-
-  Widget _currentScreen() {
-    switch (_screen) {
-      case _Screen.menu:
-        return MenuScreen(
-          key: const ValueKey('menu'),
-          hasSave: _saveChecked && _save != null,
-          onPlay: () => _startGame(diff: 1),
-          onPlayDiff: (d) => _startGame(diff: d),
-          onResume: () {
-            final save = _save;
-            if (save == null) return;
-            _startGame(
-              diff: save['diff'] as int,
-              restored: save,
-            );
-          },
-          onOpenSettings: _openSettings,
-        );
-      case _Screen.game:
-        return _game ?? const SizedBox.shrink(key: ValueKey('empty'));
-      case _Screen.settings:
-        return SettingsScreen(
-          key: const ValueKey('settings'),
-          onBack: () {
-            audio.click();
-            setState(() => _screen = _settingsReturn);
-            if (_settingsReturn == _Screen.menu) {
-              audio.playMusic('audio/music_menu.wav');
-            } else {
-              audio.playMusic('audio/music_game.wav');
-            }
-          },
-        );
-    }
   }
 }

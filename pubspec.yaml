@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 2.0.0+2
 
 environment:
   sdk: ^3.13.5
@@ -34,8 +34,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  audioplayers: ^6.1.0
-  shared_preferences: ^2.3.2
+  audioplayers: ^6.8.1
+  shared_preferences: ^2.5.6
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:
@@ -59,22 +60,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Synthesized stationery-craft audio (see tools/gen_audio.py).
+  # Game logo + company logo (audio is synthesized in code).
   assets:
-    - assets/audio/click.wav
-    - assets/audio/paper.wav
-    - assets/audio/brush.wav
-    - assets/audio/note.wav
-    - assets/audio/erase.wav
-    - assets/audio/undo.wav
-    - assets/audio/invalid.wav
-    - assets/audio/hint.wav
-    - assets/audio/stamp.wav
-    - assets/audio/start.wav
-    - assets/audio/win.wav
-    - assets/audio/lose.wav
-    - assets/audio/music_menu.wav
-    - assets/audio/music_game.wav
+    - assets/sudoku_logo.png
+    - assets/wajiha_logo.png
 
   fonts:
     - family: NotoSerif
