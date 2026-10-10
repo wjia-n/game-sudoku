@@ -51,7 +51,7 @@ class SudoSettings extends ChangeNotifier {
   String themeId = 'classic';
   String digitStyleId = 'sumi_print';
   String gridAccentId = 'sumi_grid';
-  bool isPro = false;
+  bool isPro = true; // everything unlocked — no Pro version
 
   /// Custom theme colors (ARGB ints). Defaults mirror Classic Washi.
   Map<String, int> customColors = Map.of(_defaultCustomColors);
@@ -134,7 +134,7 @@ class SudoSettings extends ChangeNotifier {
     themeId = p.getString(_kTheme) ?? 'classic';
     digitStyleId = p.getString(_kDigit) ?? 'sumi_print';
     gridAccentId = p.getString(_kAccent) ?? 'sumi_grid';
-    isPro = p.getBool(_kIsPro) ?? false;
+    isPro = true; // everything unlocked
     for (final k in _defaultCustomColors.keys) {
       customColors[k] =
           p.getInt('$_kCustomPrefix$k') ?? _defaultCustomColors[k]!;
